@@ -3,39 +3,47 @@ package main
 import (
 	"log"
 	"net/http"
+	"nhl_interface/environment"
 	"nhl_interface/routes"
 	"os"
 
+	"time"
+
+	"github.com/didip/tollbooth"
+	"github.com/didip/tollbooth/limiter"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 )
 
 func main() {
+	environment.LoadEnv()
 	r := mux.NewRouter()
+
+	lmt := tollbooth.NewLimiter(50, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})
+	lmt.SetIPLookups([]string{"RemoteAddr", "X-Forwarded-For", "X-Real-IP"})
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowCredentials: true,
 	})
 
-	// apply middleware
-	chainedHandler := handlers.CORS()(c.Handler(r))
 	routes.HandleRoutes(r)
+	lmtHandler := tollbooth.LimitFuncHandler(lmt, func(w http.ResponseWriter, req *http.Request) {
+		r.ServeHTTP(w, req)
+	})
 
-	// load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	chainedHandler := c.Handler(lmtHandler)
+	chainedHandler = handlers.LoggingHandler(os.Stdout, chainedHandler)
+	chainedHandler = handlers.RecoveryHandler()(chainedHandler)
 
+	// start server
 	port := os.Getenv("PORT")
-	log.Println("Listening on port " + port)
+	log.Println("Starting server on port " + port)
 
-	err = http.ListenAndServe(":"+port, chainedHandler)
+	err := http.ListenAndServe(":"+port, chainedHandler)
 	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
 		os.Exit(1)
 	}
+
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	// "database/sql"
 	"github.com/gorilla/mux"
 )
 
@@ -89,4 +90,13 @@ func GetAllTeamsRosters() http.HandlerFunc {
 	}
 }
 
-func GetAllTeams(w http.ResponseWriter, req *http.Request) {}
+func GetAllTeams() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "GET" {
+			helpers.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+		teams := helpers.GetAllTeamAbbrs()
+		helpers.RespondWithJSON(w, http.StatusOK, teams)
+	}
+}

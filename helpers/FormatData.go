@@ -25,8 +25,8 @@ type Player struct {
 	ID                  int    `json:"id"`
 	Headshot            string `json:"headshot"`
 	FirstName           Name   `json:"firstName"`
-	LastName            Name   `json:"lastName"`
 	FullName            string `json:"fullName"`
+	LastName            Name   `json:"lastName"`
 	SweaterNumber       int    `json:"sweaterNumber"`
 	PositionCode        string `json:"positionCode"`
 	ShootsCatches       string `json:"shootsCatches"`
