@@ -49,5 +49,3 @@ func main() {
 	}
 
 }
-
-// conditional
