@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-	"nhl_interface/environment"
 	"nhl_interface/routes"
 	"os"
 
@@ -13,11 +12,12 @@ import (
 	"github.com/didip/tollbooth/limiter"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 )
 
 func main() {
-	environment.LoadEnv()
+	_ = godotenv.Load()
 	r := mux.NewRouter()
 
 	lmt := tollbooth.NewLimiter(50, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})
@@ -37,9 +37,11 @@ func main() {
 	chainedHandler = handlers.LoggingHandler(os.Stdout, chainedHandler)
 	chainedHandler = handlers.RecoveryHandler()(chainedHandler)
 
-	// start server
 	port := os.Getenv("PORT")
-	log.Println("Starting server on port " + port)
+	if port == "" {
+		log.Fatal("$PORT must be set")
+	}
+	log.Println("Server running on port " + port)
 
 	err := http.ListenAndServe(":"+port, chainedHandler)
 	if err != nil {
@@ -47,3 +49,5 @@ func main() {
 	}
 
 }
+
+// conditional
