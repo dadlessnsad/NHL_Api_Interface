@@ -3,59 +3,28 @@ package helpers
 import (
 	"encoding/json"
 	"fmt"
+	"nhl_interface/models"
 	"sync"
 )
 
-type AllTeamsResponse struct {
-	Teams []Team `json:"teams"`
-}
-
-type Team struct {
-	Name   string         `json:"name"`
-	Roster RosterResponse `json:"roster"`
-}
-
-type RosterResponse struct {
-	Forwards   []Player `json:"forwards"`
-	Defensemen []Player `json:"defensemen"`
-	Goalies    []Player `json:"goalies"`
-}
-
-type Player struct {
-	ID                  int    `json:"id"`
-	Headshot            string `json:"headshot"`
-	FirstName           Name   `json:"firstName"`
-	FullName            string `json:"fullName"`
-	LastName            Name   `json:"lastName"`
-	SweaterNumber       int    `json:"sweaterNumber"`
-	PositionCode        string `json:"positionCode"`
-	ShootsCatches       string `json:"shootsCatches"`
-	HeightInInches      int    `json:"heightInInches"`
-	WeightInPounds      int    `json:"weightInPounds"`
-	HeightInCentimeters int    `json:"heightInCentimeters"`
-	WeightInKilograms   int    `json:"weightInKilograms"`
-	BirthDate           string `json:"birthDate"`
-	BirthCity           Name   `json:"birthCity"`
-	BirthCountry        string `json:"birthCountry"`
-}
-
-type Name struct {
-	Default string `json:"default"`
-}
-
-func FormatRosterData(rosterData string) (*RosterResponse, error) {
-	var roster RosterResponse
+func FormatRosterData(teamAbbr string, rosterData string) (*models.Team, error) {
+	var team models.Team
+	var roster models.RosterResponse
 	err := json.Unmarshal([]byte(rosterData), &roster)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling roster data: %v", err)
 	}
 
+	// get team name from team abbreviation
+	teamName := GetTeamNameFromAbbr(teamAbbr)
+	team.Name = teamName
+	team.Abbrev = teamAbbr
+
 	var wg sync.WaitGroup
-	addFullName := func(p *Player) {
+	addFullName := func(p *models.Player) {
 		defer wg.Done()
 		p.FullName = p.FirstName.Default + " " + p.LastName.Default
 	}
-
 	for i := range roster.Forwards {
 		wg.Add(1)
 		go addFullName(&roster.Forwards[i])
@@ -71,5 +40,14 @@ func FormatRosterData(rosterData string) (*RosterResponse, error) {
 
 	wg.Wait()
 
-	return &roster, nil
+	team.Roster = roster
+	//create a new team struct
+	_team := models.Team{
+		Name:   teamName,
+		Abbrev: teamAbbr,
+		Roster: roster,
+	}
+
+	return &_team, nil
+
 }

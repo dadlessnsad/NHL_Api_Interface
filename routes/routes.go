@@ -17,6 +17,8 @@ func loggingMiddleware(next http.Handler) http.Handler {
 func HandleRoutes(r *mux.Router) {
 	r.Use(loggingMiddleware)
 
+	r.HandleFunc(`/api/team/all_teams`, teams.GetAllTeams()).Methods("GET")
+
 	r.HandleFunc(`/api/team/all_teams/roster`, teams.GetAllTeamsRosters()).Methods("GET")
 
 	r.HandleFunc(`/api/team/{TEAM_ABBR}/roster`, teams.GetTeamRoster()).Methods("GET")

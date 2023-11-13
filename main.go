@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"nhl_interface/routes"
+	"nhl_interface/services"
 	"os"
 
 	"time"
@@ -37,14 +38,19 @@ func main() {
 	chainedHandler = handlers.LoggingHandler(os.Stdout, chainedHandler)
 	chainedHandler = handlers.RecoveryHandler()(chainedHandler)
 
+	services.ConnectDB()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("$PORT must be set")
+		services.CloseDB()
+		os.Exit(1)
 	}
 	log.Println("Server running on port " + port)
 
 	err := http.ListenAndServe(":"+port, chainedHandler)
 	if err != nil {
+		services.CloseDB()
 		os.Exit(1)
 	}
 

@@ -1,18 +1,22 @@
 package teams
 
 import (
+	"database/sql"
 	"io"
 	"log"
 	"net/http"
 	"nhl_interface/helpers"
+	"nhl_interface/models"
+	"nhl_interface/services"
 	"os"
 	"sync"
 
-	// "database/sql"
 	"github.com/gorilla/mux"
 )
 
-func fetchTeamRoster(teamAbbr string) (any, error) {
+var db *sql.DB
+
+func fetchTeamRoster(teamAbbr string) (*models.Team, error) {
 	baseURL := os.Getenv("NHL_API_URL")
 	apiURL := baseURL + "v1/roster/" + teamAbbr + "/current"
 	resp, err := http.Get(apiURL)
@@ -27,7 +31,7 @@ func fetchTeamRoster(teamAbbr string) (any, error) {
 		return nil, err
 	}
 
-	fmtRoster, err := helpers.FormatRosterData(string(body))
+	fmtRoster, err := helpers.FormatRosterData(teamAbbr, string(body))
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +62,14 @@ func GetTeamRoster() http.HandlerFunc {
 			helpers.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+
+		// insert team into database
+		err = services.InsertTeam(*rosterData)
+		if err != nil {
+			helpers.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
 		helpers.RespondWithJSON(w, http.StatusOK, rosterData)
 	}
 }
@@ -83,6 +95,9 @@ func GetAllTeamsRosters() http.HandlerFunc {
 					return
 				}
 				teamRosters[abbr] = rosterData
+				if err != nil {
+					return
+				}
 			}(abbr)
 		}
 		wg.Wait()
@@ -96,7 +111,18 @@ func GetAllTeams() http.HandlerFunc {
 			helpers.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
-		teams := helpers.GetAllTeamAbbrs()
-		helpers.RespondWithJSON(w, http.StatusOK, teams)
+		abbrs := helpers.GetAllTeamAbbrs()
+		var teamsData []models.Team
+
+		for _, abbr := range abbrs {
+			team, err := services.QueryTeam(abbr)
+			if err != nil {
+				helpers.RespondWithError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			teamsData = append(teamsData, team)
+		}
+
+		helpers.RespondWithJSON(w, http.StatusOK, teamsData)
 	}
 }
